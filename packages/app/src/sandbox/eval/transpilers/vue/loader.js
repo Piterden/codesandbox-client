@@ -11,11 +11,13 @@ import parse from './parser';
 const getStyleFileName = attrs => {
   let extension = 'css';
 
-  if (attrs.lang === 'scss') extension = 'scss';
-  if (attrs.lang === 'sass') extension = 'sass';
-  if (attrs.lang === 'styl') extension = 'styl';
-  if (attrs.lang === 'stylus') extension = 'styl';
-  if (attrs.lang === 'less') extension = 'less';
+  switch (attrs.lang) {
+    case 'scss': extension = 'scss'; break;
+    case 'sass': extension = 'sass'; break;
+    case 'styl': extension = 'styl'; break;
+    case 'stylus': extension = 'styl'; break;
+    case 'less': extension = 'less'; break;
+  }
 
   return attrs.module ? `module.${extension}` : extension;
 };
