@@ -15,15 +15,17 @@ const Container = styled.div`
   display: flex;
   background-color: #f2f2f2;
   padding: 0.5rem;
-  flex: 0 0 3rem;
   align-items: center;
   line-height: 1;
   box-shadow: 0 1px 3px #ddd;
-  height: 3rem;
+  height: 2.5rem;
+  min-height: 2.5rem;
   box-sizing: border-box;
 `;
 
-const Icons = styled.div`display: flex;`;
+const Icons = styled.div`
+  display: flex;
+`;
 
 const Icon = styled.div`
   display: inline-block;
@@ -50,7 +52,9 @@ const AddressBarContainer = styled.div`
   margin: 0 0.5rem;
 `;
 
-const SwitchContainer = styled.div`flex: 0 0 3.5rem;`;
+const SwitchContainer = styled.div`
+  flex: 0 0 3.5rem;
+`;
 
 type Props = {
   url: string,
@@ -62,6 +66,7 @@ type Props = {
   openNewWindow: ?() => void,
   isProjectView: boolean,
   toggleProjectView: () => void,
+  zenMode: boolean,
 };
 
 export default ({
@@ -74,6 +79,7 @@ export default ({
   isProjectView,
   toggleProjectView,
   openNewWindow,
+  zenMode,
 }: Props) => (
   <Container>
     <Icons>
@@ -90,20 +96,22 @@ export default ({
     <AddressBarContainer>
       <AddressBar url={url} onChange={onChange} onConfirm={onConfirm} />
     </AddressBarContainer>
-    {openNewWindow && (
-      <Icon style={{ marginRight: '0.75rem' }} onClick={openNewWindow}>
-        <ExternalIcon />
-      </Icon>
-    )}
-    {toggleProjectView && (
-      <SwitchContainer>
-        <Tooltip
-          title={isProjectView ? 'Project View' : 'Current Module View'}
-          position="left"
-        >
-          <Switch right={isProjectView} onClick={toggleProjectView} />
-        </Tooltip>
-      </SwitchContainer>
-    )}
+    {!zenMode &&
+      openNewWindow && (
+        <Icon style={{ marginRight: '0.75rem' }} onClick={openNewWindow}>
+          <ExternalIcon />
+        </Icon>
+      )}
+    {!zenMode &&
+      toggleProjectView && (
+        <SwitchContainer>
+          <Tooltip
+            title={isProjectView ? 'Project View' : 'Current Module View'}
+            position="left"
+          >
+            <Switch right={isProjectView} onClick={toggleProjectView} />
+          </Tooltip>
+        </SwitchContainer>
+      )}
   </Container>
 );

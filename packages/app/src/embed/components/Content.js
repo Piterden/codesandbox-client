@@ -4,22 +4,45 @@ import * as React from 'react';
 import styled from 'styled-components';
 import Preview from 'app/components/sandbox/Preview';
 import CodeEditor from 'app/components/sandbox/CodeEditor';
+import Tab from 'app/components/sandbox/CodeEditor/Tabs/Tab';
 import {
   findCurrentModule,
   findMainModule,
   getModulePath,
 } from 'app/store/entities/sandboxes/modules/selectors';
 
+import Fullscreen from 'common/components/flex/Fullscreen';
+import Centered from 'common/components/flex/Centered';
 import type { Sandbox, Module, ModuleError } from 'common/types';
+import theme from 'common/theme';
+
+import playSVG from './play.svg';
 
 const Container = styled.div`
   display: flex;
   position: relative;
   background-color: ${props => props.theme.background2};
-  height: calc(100% - 3rem);
+  height: calc(100% - 2.5rem);
+`;
+
+const Tabs = styled.div`
+  display: flex;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  background-color: rgba(0, 0, 0, 0.3);
+  overflow-x: auto;
+
+  -ms-overflow-style: none; // IE 10+
+  overflow: -moz-scrollbars-none; // Firefox
+
+  &::-webkit-scrollbar {
+    height: 2px; // Safari and Chrome
+  }
 `;
 
 const Split = styled.div`
+  display: flex;
+  flex-direction: column;
   position: relative;
   width: ${props => (props.show ? `${props.size}%` : '0px')};
   max-width: ${props => (props.only ? '100%' : `${props.size}%`)};
@@ -46,28 +69,51 @@ type Props = {
   forceRefresh: boolean,
   highlightedLines: Array<string>,
   expandDevTools: boolean,
+  runOnClick: boolean,
 };
 
 type State = {
   isInProjectView: boolean,
   codes: { [id: string]: string },
   errors: Array<ModuleError>,
+  tabs: Array<Module>,
 };
 
 export default class Content extends React.PureComponent<Props, State> {
-  state = {
-    inInProjectView: false,
-    codes: {},
-    errors: [],
-  };
+  constructor(props: Props) {
+    super(props);
 
-  // constructor(props) {
-  //   super(props);
+    let tabs = [];
 
-  //   if (props.forceRefresh) {
-  //     this.setCode = debounce(this.set)
-  //   }
-  // }
+    // Show all tabs if there are not many files
+    if (props.sandbox.modules.length <= 5) {
+      tabs = [...props.sandbox.modules];
+    } else {
+      tabs = [props.sandbox.modules.find(m => m.id === props.currentModule)];
+    }
+
+    this.state = {
+      inInProjectView: false,
+      codes: {},
+      errors: [],
+      running: !props.runOnClick,
+      tabs,
+    };
+  }
+
+  componentWillReceiveProps(nextProps: Props) {
+    if (
+      this.props.currentModule !== nextProps.currentModule &&
+      !this.state.tabs.some(x => x.id === nextProps.currentModule)
+    ) {
+      this.setState({
+        tabs: [
+          ...this.state.tabs,
+          nextProps.sandbox.modules.find(m => m.id === nextProps.currentModule),
+        ],
+      });
+    }
+  }
 
   componentDidMount() {
     setTimeout(() => this.handleResize());
@@ -181,9 +227,40 @@ export default class Content extends React.PureComponent<Props, State> {
     lineHeight: 1.4,
   });
 
-  setCurrentModule = (_, moduleId) => {
+  setCurrentModule = (_: any, moduleId: string) => {
     this.props.setCurrentModule(moduleId);
   };
+
+  closeTab = (pos: number) => {
+    const newModule =
+      this.state.tabs[pos - 1] ||
+      this.state.tabs[pos + 1] ||
+      this.state.tabs[0];
+    this.props.setCurrentModule(newModule.id);
+    this.setState({ tabs: this.state.tabs.filter((_, i) => i !== pos) });
+  };
+
+  RunOnClick = () => (
+    <Fullscreen
+      style={{ backgroundColor: theme.primary(), cursor: 'pointer' }}
+      onClick={() => this.setState({ running: true })}
+    >
+      <Centered horizontal vertical>
+        <img width={170} height={170} src={playSVG} alt="Run Sandbox" />
+        <div
+          style={{
+            color: theme.red(),
+            fontSize: '2rem',
+            fontWeight: 700,
+            marginTop: 24,
+            textTransform: 'uppercase',
+          }}
+        >
+          Click to run
+        </div>
+      </Centered>
+    </Fullscreen>
+  );
 
   render() {
     const {
@@ -218,6 +295,8 @@ export default class Content extends React.PureComponent<Props, State> {
 
     if (!alteredMainModule) throw new Error('Cannot find main module');
 
+    const { RunOnClick } = this;
+
     return (
       <Container>
         {showEditor && (
@@ -226,6 +305,34 @@ export default class Content extends React.PureComponent<Props, State> {
             only={showEditor && !showPreview}
             size={editorSize}
           >
+            <Tabs>
+              {this.state.tabs.map((module, i) => {
+                const tabsWithSameName = this.state.tabs.filter(
+                  m => m.title === module.title
+                );
+                let dirName = null;
+
+                if (tabsWithSameName.length > 1 && module.directoryShortid) {
+                  dirName = sandbox.directories.find(
+                    d => d.shortid === module.directoryShortid
+                  ).title;
+                }
+
+                return (
+                  <Tab
+                    key={module.id}
+                    active={module.id === currentModule}
+                    module={module}
+                    onClick={() => this.setCurrentModule(null, module.id)}
+                    tabCount={this.state.tabs.length}
+                    position={i}
+                    closeTab={this.closeTab}
+                    dirName={dirName}
+                  />
+                );
+              })}
+            </Tabs>
+
             <CodeEditor
               code={alteredMainModule.code}
               id={alteredMainModule.id}
@@ -257,27 +364,31 @@ export default class Content extends React.PureComponent<Props, State> {
             only={showPreview && !showEditor}
             size={100 - editorSize}
           >
-            <Preview
-              sandboxId={sandbox.id}
-              template={sandbox.template}
-              isInProjectView={isInProjectView}
-              modules={alteredModules}
-              directories={sandbox.directories}
-              externalResources={sandbox.externalResources}
-              module={alteredMainModule}
-              addError={this.addError}
-              clearErrors={this.clearErrors}
-              preferences={this.getPreferences()}
-              setProjectView={this.props.setProjectView}
-              hideNavigation={hideNavigation}
-              setFrameHeight={this.handleResize}
-              initialPath={this.props.initialPath}
-              errors={errors}
-              corrections={[]}
-              dependencies={sandbox.npmDependencies}
-              shouldExpandDevTools={expandDevTools}
-              entry={sandbox.entry}
-            />
+            {!this.state.running ? (
+              <RunOnClick />
+            ) : (
+              <Preview
+                sandboxId={sandbox.id}
+                template={sandbox.template}
+                isInProjectView={isInProjectView}
+                modules={alteredModules}
+                directories={sandbox.directories}
+                externalResources={sandbox.externalResources}
+                module={alteredMainModule}
+                addError={this.addError}
+                clearErrors={this.clearErrors}
+                preferences={this.getPreferences()}
+                setProjectView={this.props.setProjectView}
+                hideNavigation={hideNavigation}
+                setFrameHeight={this.handleResize}
+                initialPath={this.props.initialPath}
+                errors={errors}
+                corrections={[]}
+                dependencies={sandbox.npmDependencies}
+                shouldExpandDevTools={expandDevTools}
+                entry={sandbox.entry}
+              />
+            )}
           </Split>
         )}
       </Container>

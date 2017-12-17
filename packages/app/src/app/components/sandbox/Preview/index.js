@@ -16,7 +16,7 @@ import DevTools from './DevTools';
 import Navigator from './Navigator';
 
 const Container = styled.div`
-  height: 100%;
+  height: 100vh;
   width: 100%;
   background-color: white;
 
@@ -54,6 +54,8 @@ type Props = {
   inactive: ?boolean,
   shouldExpandDevTools: ?boolean,
   entry: string,
+  devToolsOpen: ?boolean,
+  setDevToolsOpen: ?(open: boolean) => void,
 };
 
 type State = {
@@ -417,6 +419,7 @@ export default class Preview extends React.PureComponent<Props, State> {
             isProjectView={isInProjectView}
             toggleProjectView={setProjectView && this.toggleProjectView}
             openNewWindow={this.openNewWindow}
+            zenMode={this.props.preferences.zenMode}
           />
         )}
 
@@ -433,6 +436,9 @@ export default class Preview extends React.PureComponent<Props, State> {
           evaluateCommand={this.evaluateInSandbox}
           sandboxId={sandboxId}
           shouldExpandDevTools={shouldExpandDevTools}
+          zenMode={this.props.preferences.zenMode}
+          devToolsOpen={this.props.devToolsOpen}
+          setDevToolsOpen={this.props.setDevToolsOpen}
         />
       </Container>
     );
